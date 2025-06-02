@@ -2,6 +2,7 @@ import { useAuth } from "react-oidc-context";
 import Dashboard from "./pages/Dashboard";
 import { useEffect, useState } from "react";
 import axios from "axios";
+import DisplayNameModal from "./components/DisplayNameModal"; // <-- Importa el modal
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
@@ -9,6 +10,8 @@ function App() {
   const auth = useAuth();
   const [userName, setUserName] = useState("");
   const [userId, setUserId] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState("");
 
   useEffect(() => {
     const registerAndFetchDisplayName = async () => {
@@ -23,12 +26,8 @@ function App() {
           if (res.data.display_name) {
             setUserName(res.data.display_name);
           } else {
-            // Si no existe, pide el nombre y guárdalo
-            const name = prompt("¿Cómo te gustaría que te llamemos?");
-            if (name) {
-              await axios.post(`${API_URL}/api/users/${email}/display-name`, { display_name: name });
-              setUserName(name);
-            }
+            setPendingEmail(email);
+            setShowModal(true); // Muestra el modal si no hay nombre
           }
 
           // 3. Obtener el user_id
@@ -36,13 +35,21 @@ function App() {
           setUserId(resId.data.user_id);
 
         } catch (err) {
-          setUserName(""); // O maneja el error como prefieras
+          setUserName("");
           setUserId(null);
         }
       }
     };
     registerAndFetchDisplayName();
   }, [auth.isAuthenticated, auth.user]);
+
+  // Nueva función para guardar el nombre desde el modal
+  const handleSaveDisplayName = async (name) => {
+    if (!pendingEmail) return;
+    await axios.post(`${API_URL}/api/users/${pendingEmail}/display-name`, { display_name: name });
+    setUserName(name);
+    setShowModal(false);
+  };
 
   const handleLogout = () => {
     auth.signoutRedirect();
@@ -59,6 +66,7 @@ function App() {
   if (auth.isAuthenticated) {
     return (
       <div>
+        <DisplayNameModal show={showModal} onSave={handleSaveDisplayName} />
         <div className="mb-2">Bienvenido{userName ? `, ${userName}` : ""}!</div>
         <button onClick={handleLogout}>Cerrar sesión</button>
         {userId && <Dashboard userId={userId} />}

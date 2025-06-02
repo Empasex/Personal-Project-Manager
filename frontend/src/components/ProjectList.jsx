@@ -101,15 +101,18 @@ const ProjectList = ({ userId }) => {
                     />
                 </div>
                 <div className="col-md-3">
-                    <input
-                        type="text"
-                        name="status"
-                        className="form-control"
-                        placeholder="Estado"
-                        value={form.status}
-                        onChange={handleChange}
-                        required
-                    />
+    <select
+        name="status"
+        className="form-control"
+        value={form.status}
+        onChange={handleChange}
+        required
+    >
+        <option value="">Selecciona estado</option>
+        <option value="Pendiente">Pendiente</option>
+        <option value="En Progreso">En Progreso</option>
+        <option value="Realizado">Realizado</option>
+    </select>
                 </div>
                 <div className="col-md-2 d-flex gap-2">
                     <button type="submit" className="btn btn-primary">
