@@ -9,10 +9,15 @@ class ProjectModel {
         return this.db.execute(query, [user_id, name, description, status]);
     }
 
-    getProjects(userId) {
-        const query = 'SELECT * FROM projects WHERE user_id = ?';
-        return this.db.execute(query, [userId]);
-    }
+getProjects(userId) {
+    const query = `
+        SELECT p.*, u.display_name
+        FROM projects p
+        JOIN users u ON p.user_id = u.id
+        WHERE p.user_id = ?
+    `;
+    return this.db.execute(query, [userId]);
+}
 
     updateProject(projectId, projectData) {
         const { name, description, status } = projectData;
