@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { fetchProjects, createProject, updateProject, deleteProject } from '../services/api';
+import ProjectDetailModal from './ProjectDetailModal';
 
 const ProjectList = ({ userId }) => {
     const [projects, setProjects] = useState([]);
@@ -13,6 +14,10 @@ const ProjectList = ({ userId }) => {
         user_id: userId
     });
     const [editingId, setEditingId] = useState(null);
+
+    // Nuevo estado para el modal de detalles
+    const [selectedProject, setSelectedProject] = useState(null);
+    const [showDetailModal, setShowDetailModal] = useState(false);
 
     const loadProjects = async () => {
         setLoading(true);
@@ -74,6 +79,18 @@ const ProjectList = ({ userId }) => {
         setEditingId(null);
     };
 
+    // Nuevo: abrir modal de detalles
+const handleShowDetails = (project) => {
+  console.log("Abriendo modal para:", project);
+  setSelectedProject(project);
+  setShowDetailModal(true);
+};
+
+    const handleCloseDetails = () => {
+        setShowDetailModal(false);
+        setSelectedProject(null);
+    };
+
     return (
         <div className="container mt-4">
             <h2 className="mb-4">{editingId ? 'Editar Proyecto' : 'Crear Proyecto'}</h2>
@@ -101,18 +118,18 @@ const ProjectList = ({ userId }) => {
                     />
                 </div>
                 <div className="col-md-3">
-    <select
-        name="status"
-        className="form-control"
-        value={form.status}
-        onChange={handleChange}
-        required
-    >
-        <option value="">Selecciona estado</option>
-        <option value="Pendiente">Pendiente</option>
-        <option value="En Progreso">En Progreso</option>
-        <option value="Realizado">Realizado</option>
-    </select>
+                    <select
+                        name="status"
+                        className="form-control"
+                        value={form.status}
+                        onChange={handleChange}
+                        required
+                    >
+                        <option value="">Selecciona estado</option>
+                        <option value="Pendiente">Pendiente</option>
+                        <option value="En Progreso">En Progreso</option>
+                        <option value="Realizado">Realizado</option>
+                    </select>
                 </div>
                 <div className="col-md-2 d-flex gap-2">
                     <button type="submit" className="btn btn-primary">
@@ -135,18 +152,28 @@ const ProjectList = ({ userId }) => {
                 <ul className="list-group">
                     {projects && projects.length > 0 ? (
                         projects.map(project => (
-                            <li className="list-group-item mb-2" key={project.id}>
+                            <li
+                                className="list-group-item mb-2"
+                                key={project.id}
+                                style={{ cursor: "pointer" }}
+                                onClick={() => handleShowDetails(project)}
+                            >
                                 <div className="d-flex justify-content-between align-items-center">
                                     <div>
                                         <strong>{project.name}</strong>
-                                        <div>Descripción: {project.description}</div>
-                                        <div>Status: {project.status}</div>
+                                        <span className="ms-3 badge bg-info text-dark">{project.status}</span>
                                     </div>
                                     <div>
-                                        <button className="btn btn-warning btn-sm me-2" onClick={() => handleEdit(project)}>
+                                        <button
+                                            className="btn btn-warning btn-sm me-2"
+                                            onClick={e => { e.stopPropagation(); handleEdit(project); }}
+                                        >
                                             Editar
                                         </button>
-                                        <button className="btn btn-danger btn-sm" onClick={() => handleDelete(project.id)}>
+                                        <button
+                                            className="btn btn-danger btn-sm"
+                                            onClick={e => { e.stopPropagation(); handleDelete(project.id); }}
+                                        >
                                             Eliminar
                                         </button>
                                     </div>
@@ -158,6 +185,13 @@ const ProjectList = ({ userId }) => {
                     )}
                 </ul>
             )}
+
+            {/* Modal de detalles */}
+            <ProjectDetailModal
+                show={showDetailModal}
+                project={selectedProject}
+                onClose={handleCloseDetails}
+            />
         </div>
     );
 };
