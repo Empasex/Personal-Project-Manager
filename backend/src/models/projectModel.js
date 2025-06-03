@@ -3,21 +3,33 @@ class ProjectModel {
         this.db = db;
     }
 
-    createProject(projectData) {
+    // Crea el proyecto y retorna el resultado (para obtener el insertId)
+    async createProject(projectData) {
         const { user_id, name, description, status } = projectData;
         const query = 'INSERT INTO projects (user_id, name, description, status, created_at) VALUES (?, ?, ?, ?, NOW())';
-        return this.db.execute(query, [user_id, name, description, status]);
+        const [result] = await this.db.execute(query, [user_id, name, description, status]);
+        // Agrega al creador como miembro del proyecto
+        await this.db.execute('INSERT INTO project_users (project_id, user_id) VALUES (?, ?)', [result.insertId, user_id]);
+        return result;
     }
 
-getProjects(userId) {
-    const query = `
-        SELECT p.*, u.display_name
-        FROM projects p
-        JOIN users u ON p.user_id = u.id
-        WHERE p.user_id = ?
-    `;
-    return this.db.execute(query, [userId]);
-}
+    // Trae todos los proyectos donde el usuario es miembro
+    getProjects(userId) {
+        const query = `
+            SELECT p.*, u.display_name
+            FROM projects p
+            JOIN users u ON p.user_id = u.id
+            JOIN project_users pu ON pu.project_id = p.id
+            WHERE pu.user_id = ?
+        `;
+        return this.db.execute(query, [userId]);
+    }
+
+    // Agrega un usuario invitado al proyecto
+    addUserToProject(projectId, userId) {
+        const query = 'INSERT IGNORE INTO project_users (project_id, user_id) VALUES (?, ?)';
+        return this.db.execute(query, [projectId, userId]);
+    }
 
     updateProject(projectId, projectData) {
         const { name, description, status } = projectData;

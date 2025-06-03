@@ -1,0 +1,46 @@
+
+.login-bg {
+  min-height: 100vh;
+  width: 100vw;
+  position: absolute;
+  top: 0; left: 0;
+  z-index: 0;
+  background: radial-gradient(circle at 80% 20%, #fff7e6 30%, #f7e6ff 60%, #e6f7ff 100%);
+  overflow: hidden;
+}
+
+/* Opcional: agrega formas suaves con pseudo-elementos */
+.login-bg::before,
+.login-bg::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.5;
+  z-index: 0;
+}
+.login-bg::before {
+  width: 60vw;
+  height: 60vw;
+  left: -20vw;
+  top: -20vw;
+  background: #e6f7ff;
+}
+.login-bg::after {
+  width: 50vw;
+  height: 50vw;
+  right: -15vw;
+  bottom: -15vw;
+  background: #fff7e6;
+}
+
+.login-form {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.main-content {
+  position: relative;
+  z-index: 1;
+}

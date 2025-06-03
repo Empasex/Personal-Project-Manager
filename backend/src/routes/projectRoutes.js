@@ -13,6 +13,8 @@ export default function projectRoutes(db) {
     router.get('/', projectController.getProjects.bind(projectController));
     router.put('/:id', projectController.updateProject.bind(projectController));
     router.delete('/:id', projectController.deleteProject.bind(projectController));
-
+    router.post('/:id/invite', projectController.addUserToProject.bind(projectController));
+    router.get('/:id/members', projectController.getProjectMembers.bind(projectController));
+    
     return router;
 }

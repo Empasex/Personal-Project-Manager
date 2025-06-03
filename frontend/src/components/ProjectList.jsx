@@ -161,7 +161,20 @@ const handleShowDetails = (project) => {
                                 <div className="d-flex justify-content-between align-items-center">
                                     <div>
                                         <strong>{project.name}</strong>
-                                        <span className="ms-3 badge bg-info text-dark">{project.status}</span>
+                                       <span
+                                        className={
+                                        "ms-3 badge " +
+                                        (project.status === "Realizado"
+                                        ? "bg-success"
+                                        : project.status === "En Progreso"
+                                        ? "bg-warning text-dark"
+                                        : project.status === "Pendiente"
+                                        ? "bg-danger"
+                                        : "bg-secondary")
+                                    }
+                                    >
+                                         {project.status}
+                                         </span>
                                     </div>
                                     <div>
                                         <button
@@ -170,12 +183,14 @@ const handleShowDetails = (project) => {
                                         >
                                             Editar
                                         </button>
-                                        <button
-                                            className="btn btn-danger btn-sm"
-                                            onClick={e => { e.stopPropagation(); handleDelete(project.id); }}
-                                        >
-                                            Eliminar
-                                        </button>
+                                        {userId === project.user_id && (
+                                            <button
+                                                className="btn btn-danger btn-sm"
+                                                onClick={e => { e.stopPropagation(); handleDelete(project.id); }}
+                                            >
+                                                Eliminar
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             </li>
@@ -191,6 +206,7 @@ const handleShowDetails = (project) => {
                 show={showDetailModal}
                 project={selectedProject}
                 onClose={handleCloseDetails}
+                userId={userId}
             />
         </div>
     );
