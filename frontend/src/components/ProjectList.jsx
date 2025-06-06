@@ -1,21 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { fetchProjects, createProject, updateProject, deleteProject } from '../services/api';
+import { fetchProjects, deleteProject } from '../services/api';
 import ProjectDetailModal from './ProjectDetailModal';
 
-const ProjectList = ({ userId }) => {
+const prioridadOrden = { 'Alta': 1, 'Media': 2, 'Baja': 3 };
+
+const ProjectList = ({ userId, onEditProject, refresh }) => {
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    const [form, setForm] = useState({
-        name: '',
-        description: '',
-        status: '',
-        user_id: userId
-    });
-    const [editingId, setEditingId] = useState(null);
-
-    // Nuevo estado para el modal de detalles
+    // Estado para el modal de detalles
     const [selectedProject, setSelectedProject] = useState(null);
     const [showDetailModal, setShowDetailModal] = useState(false);
 
@@ -33,125 +27,43 @@ const ProjectList = ({ userId }) => {
 
     useEffect(() => {
         loadProjects();
-    }, [userId]);
-
-    const handleChange = (e) => {
-        setForm({ ...form, [e.target.name]: e.target.value });
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            if (editingId) {
-                await updateProject(editingId, { ...form, user_id: userId });
-            } else {
-                await createProject({ ...form, user_id: userId });
-            }
-            setForm({ name: '', description: '', status: '', user_id: userId });
-            setEditingId(null);
-            await loadProjects();
-        } catch (err) {
-            setError('Failed to save project');
-        }
-    };
+        // eslint-disable-next-line
+    }, [userId, refresh]);
 
     const handleDelete = async (id) => {
         try {
-            await deleteProject(id);
+            await deleteProject(id, userId);
             await loadProjects();
         } catch (err) {
             setError('Failed to delete project');
         }
     };
 
-    const handleEdit = (project) => {
-        setForm({
-            name: project.name,
-            description: project.description,
-            status: project.status,
-            user_id: project.user_id
-        });
-        setEditingId(project.id);
+    const handleShowDetails = (project) => {
+        setSelectedProject(project);
+        setShowDetailModal(true);
     };
-
-    const handleCancelEdit = () => {
-        setForm({ name: '', description: '', status: '', user_id: userId });
-        setEditingId(null);
-    };
-
-    // Nuevo: abrir modal de detalles
-const handleShowDetails = (project) => {
-  console.log("Abriendo modal para:", project);
-  setSelectedProject(project);
-  setShowDetailModal(true);
-};
 
     const handleCloseDetails = () => {
         setShowDetailModal(false);
         setSelectedProject(null);
     };
 
+    // Ordenar por prioridad
+    const sortedProjects = [...projects].sort(
+        (a, b) => (prioridadOrden[a.prioridad] || 4) - (prioridadOrden[b.prioridad] || 4)
+    );
+
     return (
         <div className="container mt-4">
-            <h2 className="mb-4">{editingId ? 'Editar Proyecto' : 'Crear Proyecto'}</h2>
-            <form className="row g-2 mb-4" onSubmit={handleSubmit}>
-                <div className="col-md-3">
-                    <input
-                        type="text"
-                        name="name"
-                        className="form-control"
-                        placeholder="Nombre"
-                        value={form.name}
-                        onChange={handleChange}
-                        required
-                    />
-                </div>
-                <div className="col-md-4">
-                    <input
-                        type="text"
-                        name="description"
-                        className="form-control"
-                        placeholder="Descripción"
-                        value={form.description}
-                        onChange={handleChange}
-                        required
-                    />
-                </div>
-                <div className="col-md-3">
-                    <select
-                        name="status"
-                        className="form-control"
-                        value={form.status}
-                        onChange={handleChange}
-                        required
-                    >
-                        <option value="">Selecciona estado</option>
-                        <option value="Pendiente">Pendiente</option>
-                        <option value="En Progreso">En Progreso</option>
-                        <option value="Realizado">Realizado</option>
-                    </select>
-                </div>
-                <div className="col-md-2 d-flex gap-2">
-                    <button type="submit" className="btn btn-primary">
-                        {editingId ? 'Actualizar' : 'Crear'}
-                    </button>
-                    {editingId && (
-                        <button type="button" className="btn btn-secondary" onClick={handleCancelEdit}>
-                            Cancelar
-                        </button>
-                    )}
-                </div>
-            </form>
-
-            <h2 className="mb-3">Project List</h2>
             {loading ? (
                 <div className="alert alert-info">Cargando...</div>
             ) : error ? (
                 <div className="alert alert-danger">{error}</div>
             ) : (
                 <ul className="list-group">
-                    {projects && projects.length > 0 ? (
-                        projects.map(project => (
+                    {sortedProjects && sortedProjects.length > 0 ? (
+                        sortedProjects.map(project => (
                             <li
                                 className="list-group-item mb-2"
                                 key={project.id}
@@ -161,25 +73,28 @@ const handleShowDetails = (project) => {
                                 <div className="d-flex justify-content-between align-items-center">
                                     <div>
                                         <strong>{project.name}</strong>
-                                       <span
-                                        className={
-                                        "ms-3 badge " +
-                                        (project.status === "Realizado"
-                                        ? "bg-success"
-                                        : project.status === "En Progreso"
-                                        ? "bg-warning text-dark"
-                                        : project.status === "Pendiente"
-                                        ? "bg-danger"
-                                        : "bg-secondary")
-                                    }
-                                    >
-                                         {project.status}
-                                         </span>
+                                        <span
+                                            className={
+                                                "ms-3 badge " +
+                                                (project.status === "Realizado"
+                                                    ? "bg-success"
+                                                    : project.status === "En Progreso"
+                                                    ? "bg-warning text-dark"
+                                                    : project.status === "Pendiente"
+                                                    ? "bg-danger"
+                                                    : "bg-secondary")
+                                            }
+                                        >
+                                            {project.status}
+                                        </span>
+                                        <span className="ms-3 badge bg-info text-dark">
+                                            {project.prioridad}
+                                        </span>
                                     </div>
                                     <div>
                                         <button
                                             className="btn btn-warning btn-sm me-2"
-                                            onClick={e => { e.stopPropagation(); handleEdit(project); }}
+                                            onClick={e => { e.stopPropagation(); onEditProject && onEditProject(project); }}
                                         >
                                             Editar
                                         </button>

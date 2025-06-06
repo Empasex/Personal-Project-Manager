@@ -5,10 +5,9 @@ class ProjectModel {
 
     // Crea el proyecto y retorna el resultado (para obtener el insertId)
     async createProject(projectData) {
-        const { user_id, name, description, status } = projectData;
-        const query = 'INSERT INTO projects (user_id, name, description, status, created_at) VALUES (?, ?, ?, ?, NOW())';
-        const [result] = await this.db.execute(query, [user_id, name, description, status]);
-        // Agrega al creador como miembro del proyecto
+        const { user_id, name, description, status, prioridad, responsable } = projectData;
+        const query = 'INSERT INTO projects (user_id, name, description, status, prioridad, responsable, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())';
+        const [result] = await this.db.execute(query, [user_id, name, description, status, prioridad, responsable]);
         await this.db.execute('INSERT INTO project_users (project_id, user_id) VALUES (?, ?)', [result.insertId, user_id]);
         return result;
     }
@@ -31,11 +30,11 @@ class ProjectModel {
         return this.db.execute(query, [projectId, userId]);
     }
 
-    updateProject(projectId, projectData) {
-        const { name, description, status } = projectData;
-        const query = 'UPDATE projects SET name = ?, description = ?, status = ? WHERE id = ?';
-        return this.db.execute(query, [name, description, status, projectId]);
-    }
+        updateProject(projectId, projectData) {
+            const { name, description, status, prioridad, responsable } = projectData;
+            const query = 'UPDATE projects SET name = ?, description = ?, status = ?, prioridad = ?, responsable = ? WHERE id = ?';
+            return this.db.execute(query, [name, description, status, prioridad, responsable, projectId]);
+        }
 
     deleteProject(projectId) {
         const query = 'DELETE FROM projects WHERE id = ?';

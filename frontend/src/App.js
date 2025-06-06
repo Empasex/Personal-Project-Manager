@@ -3,7 +3,9 @@ import Dashboard from "./pages/Dashboard";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import DisplayNameModal from "./components/DisplayNameModal";
+import ProjectForm from "./pages/ProjectForm";
 import './App.css';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
@@ -46,7 +48,11 @@ function App() {
   };
 
   const handleLogout = () => {
-    auth.signoutRedirect();
+    auth.removeUser(); // Limpia la sesión local
+    const clientId = "430l854cf5agq8o7n5qt1q4fmn";
+    const logoutUri = "https://d3ejww12j2glsc.cloudfront.net";
+    const cognitoDomain = "https://us-east-2qswitslz5.auth.us-east-2.amazoncognito.com";
+    window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(logoutUri)}`;
   };
 
   if (auth.isLoading) {
@@ -57,26 +63,33 @@ function App() {
     return <div>Encountering error... {auth.error.message}</div>;
   }
 
-return (
-  <div className="login-bg">
-    <div className="main-content">
-      {auth.isAuthenticated ? (
-        <div>
-          <DisplayNameModal show={showModal} onSave={handleSaveDisplayName} />
-          <div className="mb-2">Bienvenido{userName ? `, ${userName}` : ""}!</div>
-          <button onClick={handleLogout}>Cerrar sesión</button>
-          {userId && <Dashboard userId={userId} />}
-          {!userId && <div>Cargando usuario...</div>}
-        </div>
-      ) : (
-        <div className="login-form">
-          <button onClick={() => auth.signinRedirect()} type="button">
-            Iniciar sesión
-          </button>
-        </div>
-      )}
+  return (
+    <div className="login-bg">
+      <div className="main-content">
+        {auth.isAuthenticated ? (
+          <Router>
+            <DisplayNameModal show={showModal} onSave={handleSaveDisplayName} />
+            <div className="header-bar">
+              <div className="welcome-title">
+                Bienvenido{userName ? `, ${userName}` : ""}!
+              </div>
+              <button className="logout-btn" onClick={handleLogout}>Cerrar sesión</button>
+            </div>
+            <Routes>
+              <Route path="/" element={userId ? <Dashboard userId={userId} /> : <div>Cargando usuario...</div>} />
+              <Route path="/crear-proyecto" element={<ProjectForm userId={userId} />} />
+              <Route path="/editar-proyecto/:id" element={<ProjectForm userId={userId} />} />
+            </Routes>
+          </Router>
+        ) : (
+          <div className="login-form">
+            <button onClick={() => auth.signinRedirect()} type="button">
+              Iniciar sesión
+            </button>
+          </div>
+        )}
+      </div>
     </div>
-  </div>
   );
 }
 

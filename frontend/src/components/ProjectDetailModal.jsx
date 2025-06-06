@@ -71,6 +71,8 @@ const ProjectDetailModal = ({ show, project, onClose, userId }) => {
               {project.description}
             </div>
           </li>
+          <li><strong>Prioridad:</strong> {project.prioridad}</li>
+          <li><strong>Responsable:</strong> {project.responsable}</li>
           <li><strong>Fecha de creación:</strong> {project.created_at ? new Date(project.created_at).toLocaleString() : "N/A"}</li>
           <li><strong>Creador:</strong> {project.display_name || "Desconocido"}</li>
         </ul>
