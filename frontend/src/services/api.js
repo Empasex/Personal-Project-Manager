@@ -27,3 +27,8 @@ export const updateProject = async (projectId, project) => {
 export const deleteProject = async (projectId, userId) => {
     await axios.delete(`${API_URL}/${projectId}?userId=${userId}`);
 };
+
+export const fetchProjectById = async (projectId) => {
+    const response = await axios.get(`${API_URL}/${projectId}`);
+    return response.data;
+};

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { createProject, updateProject, fetchProjects } from "../services/api";
 import { useNavigate, useParams } from "react-router-dom";
+import { createProject, updateProject, fetchProjects, fetchProjectById } from "../services/api";
 
 const estados = ["Pendiente", "En Progreso", "Realizado"];
 const prioridades = ["Baja", "Media", "Alta"];
@@ -20,32 +20,29 @@ const ProjectForm = ({ userId }) => {
   const navigate = useNavigate();
   const { id } = useParams();
 
-  useEffect(() => {
+useEffect(() => {
     const loadProject = async () => {
-      if (id) {
-        setLoading(true);
-        try {
-          const projects = await fetchProjects(userId);
-          const project = projects.find(p => String(p.id) === String(id));
-          if (project) {
-            setForm({
-              name: project.name || "",
-              description: project.description || "",
-              status: project.status || "",
-              prioridad: project.prioridad || "",
-              responsable: project.responsable || "",
-              user_id: userId,
-            });
-          }
-        } catch {
-          setError("No se pudo cargar el proyecto");
-        } finally {
-          setLoading(false);
+        if (id) {
+            setLoading(true);
+            try {
+                const project = await fetchProjectById(id);
+                setForm({
+                    name: project.name || "",
+                    description: project.description || "",
+                    status: project.status || "",
+                    prioridad: project.prioridad || "",
+                    responsable: project.responsable || "",
+                    user_id: userId,
+                });
+            } catch {
+                setError("No se pudo cargar el proyecto");
+            } finally {
+                setLoading(false);
+            }
         }
-      }
     };
     loadProject();
-  }, [id, userId]);
+}, [id, userId]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
