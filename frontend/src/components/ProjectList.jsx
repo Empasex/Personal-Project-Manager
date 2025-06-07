@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { fetchProjects } from '../services/api';
 import ProjectDetailModal from './ProjectDetailModal';
+import { deleteProject } from "../services/api";
+
 
 const prioridadOrden = { 'Alta': 1, 'Media': 2, 'Baja': 3 };
 
@@ -44,6 +46,16 @@ const ProjectList = ({ userId, onEditProject, refresh, page = 1, setTotalProject
         setSelectedProject(null);
     };
 
+const handleDelete = async (projectId) => {
+    try {
+        await deleteProject(projectId, userId);
+        await loadProjects(); // Esto recarga la lista inmediatamente
+        setShowDetailModal(false); // Cierra el modal si está abierto
+        setSelectedProject(null); // Limpia el proyecto seleccionado
+    } catch {
+        alert("No se pudo eliminar el proyecto.");
+    }
+};
     // Ordenar por prioridad
     const sortedProjects = [...projects].sort(
         (a, b) => (prioridadOrden[a.prioridad] || 4) - (prioridadOrden[b.prioridad] || 4)
@@ -94,12 +106,12 @@ const ProjectList = ({ userId, onEditProject, refresh, page = 1, setTotalProject
                                             Editar
                                         </button>
                                         {userId === project.user_id && (
-                                            <button
-                                                className="btn btn-danger btn-sm"
-                                                onClick={e => { e.stopPropagation(); /* handleDelete(project.id); */ }}
-                                            >
-                                                Eliminar
-                                            </button>
+                                        <button
+                                            className="btn btn-danger btn-sm"
+                                            onClick={e => { e.stopPropagation(); handleDelete(project.id); }}
+                                        >
+                                            Eliminar
+                                        </button>
                                         )}
                                     </div>
                                 </div>
@@ -117,6 +129,9 @@ const ProjectList = ({ userId, onEditProject, refresh, page = 1, setTotalProject
                 project={selectedProject}
                 onClose={handleCloseDetails}
                 userId={userId}
+                setSelectedProject={setSelectedProject} // <-- Solo agregas esta línea
+                refreshProjects={loadProjects} // <-- agrega esto
+
             />
         </div>
     );

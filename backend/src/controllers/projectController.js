@@ -165,20 +165,23 @@ class ProjectController {
         }
     }
 
-    async getProjectById(req, res) {
-        try {
-            const projectId = req.params.id;
-            const [rows] = await this.projectService.projectModel.db.execute(
-                'SELECT * FROM projects WHERE id = ?', [projectId]
-            );
-            if (!rows.length) {
-                return res.status(404).json({ message: "Proyecto no encontrado" });
-            }
-            res.json(rows[0]);
-        } catch (error) {
-            res.status(500).json({ message: error.message });
+async getProjectById(req, res) {
+    try {
+        const projectId = req.params.id;
+        const [rows] = await this.projectService.projectModel.db.execute(
+            `SELECT p.*, u.display_name
+             FROM projects p
+             JOIN users u ON p.user_id = u.id
+             WHERE p.id = ?`, [projectId]
+        );
+        if (!rows.length) {
+            return res.status(404).json({ message: "Proyecto no encontrado" });
         }
+        res.json(rows[0]);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
+}
 }
 
 export default ProjectController;

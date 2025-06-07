@@ -82,6 +82,7 @@ const Dashboard = ({ userId }) => {
                 userId={userId}
                 onEditProject={handleEditProject}
                 refresh={refreshList}
+                setRefresh={handleRefresh} // <-- agrega esto
                 page={page}
                 setTotalProjects={setTotalProjects}
                 projectsPerPage={PROJECTS_PER_PAGE}
