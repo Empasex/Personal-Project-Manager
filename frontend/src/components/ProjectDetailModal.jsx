@@ -2,31 +2,67 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 
 const ProjectDetailModal = ({ show, project, onClose, userId }) => {
+  if (!show || !project) return null;
+
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteMsg, setInviteMsg] = useState("");
   const [members, setMembers] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [responsable, setResponsable] = useState(project.responsable);
+  const [responsableMsg, setResponsableMsg] = useState("");
 
+  // El líder es el creador del proyecto
+  const isLeader = project.user_id === userId;
+
+  // Cargar miembros del proyecto
   useEffect(() => {
     const fetchMembers = async () => {
-      if (show && project) {
-        try {
-          const res = await axios.get(
-            `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/projects/${project.id}/members`
-          );
-          setMembers(res.data);
-        } catch {
-          setMembers([]);
-        }
+      try {
+        const res = await axios.get(
+          `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/projects/${project.id}/members`
+        );
+        setMembers(res.data);
+      } catch {
+        setMembers([]);
       }
     };
-    fetchMembers();
+    if (show && project?.id) fetchMembers();
+    setInviteEmail("");
+    setInviteMsg("");
+    setSuggestions([]);
+    setShowSuggestions(false);
+    setResponsable(project.responsable);
+    setResponsableMsg("");
   }, [show, project]);
 
-  if (!show || !project) return null;
+  // Autocomplete: buscar emails
+  const handleInviteInput = async (e) => {
+    const value = e.target.value;
+    setInviteEmail(value);
+    if (value.length > 0) {
+      try {
+        const res = await axios.get(
+          `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/users/search?q=${encodeURIComponent(value)}`
+        );
+        setSuggestions(res.data.filter(u => !members.some(m => m.email === u.email)));
+        setShowSuggestions(true);
+      } catch {
+        setSuggestions([]);
+      }
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
 
-  // Solo el líder puede invitar (userId === project.user_id)
-  const isLeader = userId === project.user_id;
+  const handleSuggestionClick = (email) => {
+    setInviteEmail(email);
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
 
+  // Lógica real de invitación
   const handleInvite = async (e) => {
     e.preventDefault();
     setInviteMsg("");
@@ -35,16 +71,51 @@ const ProjectDetailModal = ({ show, project, onClose, userId }) => {
         `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/projects/${project.id}/invite?userId=${userId}`,
         { email: inviteEmail }
       );
-      setInviteMsg("Usuario invitado correctamente.");
+      setInviteMsg("Invitación enviada correctamente.");
       setInviteEmail("");
-      // Refresca la lista de miembros
+      setSuggestions([]);
+      setShowSuggestions(false);
+      // Recargar miembros
       const res = await axios.get(
         `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/projects/${project.id}/members`
       );
       setMembers(res.data);
     } catch (err) {
-      setInviteMsg("No se pudo invitar al usuario.");
+      setInviteMsg("Error al invitar usuario.");
     }
+    setTimeout(() => setInviteMsg(""), 2500);
+  };
+
+  // Eliminar miembro (solo líder)
+  const handleRemoveMember = async (memberEmail) => {
+    if (!window.confirm("¿Seguro que deseas eliminar este miembro?")) return;
+    try {
+      await axios.delete(
+        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/projects/${project.id}/members/${memberEmail}?userId=${userId}`
+      );
+      setMembers(members.filter(m => m.email !== memberEmail));
+    } catch {
+      alert("No se pudo eliminar el miembro.");
+    }
+  };
+
+  // Guardar responsable y recargarlo desde backend, con UX mejorado
+  const handleSaveResponsable = async () => {
+    try {
+      await axios.put(
+        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/projects/${project.id}/responsable?userId=${userId}`,
+        { responsable }
+      );
+      setResponsableMsg("Responsable actualizado correctamente.");
+      // Recargar responsable actualizado desde backend
+      const res = await axios.get(
+        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/api/projects/${project.id}`
+      );
+      setResponsable(res.data.responsable);
+    } catch {
+      setResponsableMsg("No se pudo actualizar el responsable.");
+    }
+    setTimeout(() => setResponsableMsg(""), 2500);
   };
 
   return (
@@ -63,7 +134,7 @@ const ProjectDetailModal = ({ show, project, onClose, userId }) => {
               maxHeight: "120px",
               overflowY: "auto",
               whiteSpace: "pre-line",
-              marginTop: "0.5em",
+              marginBottom: "0.5em",
               padding: "0.5em",
               background: "#f8f9fa",
               borderRadius: "4px"
@@ -72,7 +143,40 @@ const ProjectDetailModal = ({ show, project, onClose, userId }) => {
             </div>
           </li>
           <li><strong>Prioridad:</strong> {project.prioridad}</li>
-          <li><strong>Responsable:</strong> {project.responsable}</li>
+          <li>
+            <strong>Responsable:</strong>{" "}
+            {isLeader ? (
+              <>
+                <select
+                  className="form-select d-inline w-auto"
+                  value={responsable || ""}
+                  onChange={e => setResponsable(e.target.value)}
+                >
+                  <option value="">Selecciona responsable</option>
+                  {members.map((m) => (
+                    <option key={m.email} value={m.display_name}>
+                      {m.display_name} ({m.email})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="btn btn-success btn-sm ms-2"
+                  onClick={handleSaveResponsable}
+                  disabled={!responsable}
+                  type="button"
+                >
+                  Guardar
+                </button>
+                {responsableMsg && (
+                  <span className="ms-2" style={{ color: responsableMsg.includes("correctamente") ? "green" : "red" }}>
+                    {responsableMsg}
+                  </span>
+                )}
+              </>
+            ) : (
+              responsable
+            )}
+          </li>
           <li><strong>Fecha de creación:</strong> {project.created_at ? new Date(project.created_at).toLocaleString() : "N/A"}</li>
           <li><strong>Creador:</strong> {project.display_name || "Desconocido"}</li>
         </ul>
@@ -80,25 +184,57 @@ const ProjectDetailModal = ({ show, project, onClose, userId }) => {
           <strong>Miembros del proyecto:</strong>
           <ul>
             {members.map((m, idx) => (
-              <li key={idx}>{m.display_name} <span className="text-muted">({m.email})</span></li>
+              <li key={idx}>
+                {m.display_name} <span className="text-muted">({m.email})</span>
+                {isLeader && m.user_id !== userId && (
+                  <button
+                    className="btn btn-danger btn-sm ms-2"
+                    onClick={() => handleRemoveMember(m.email)}
+                    type="button"
+                  >
+                    Eliminar
+                  </button>
+                )}
+              </li>
             ))}
           </ul>
         </div>
         {isLeader && (
           <form className="mb-2" onSubmit={handleInvite}>
             <label>Invitar usuario por email:</label>
-            <div className="d-flex gap-2">
+            <div className="position-relative">
               <input
                 type="email"
                 className="form-control"
                 value={inviteEmail}
-                onChange={e => setInviteEmail(e.target.value)}
+                onChange={handleInviteInput}
                 placeholder="Email del invitado"
                 required
+                autoComplete="off"
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 100)}
               />
-              <button type="submit" className="btn btn-primary">Invitar</button>
+              {showSuggestions && suggestions.length > 0 && (
+                <ul className="list-group position-absolute w-100" style={{ zIndex: 1000 }}>
+                  {suggestions.map((s, idx) => (
+                    <li
+                      key={idx}
+                      className="list-group-item list-group-item-action"
+                      style={{ cursor: "pointer" }}
+                      onMouseDown={() => handleSuggestionClick(s.email)}
+                    >
+                      {s.display_name ? `${s.display_name} (${s.email})` : s.email}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-            {inviteMsg && <div className="mt-2">{inviteMsg}</div>}
+            <div className="d-flex align-items-center mt-2">
+              <button type="submit" className="btn btn-primary">Invitar</button>
+              {inviteMsg && (
+                <span className="ms-2" style={{ whiteSpace: "nowrap" }}>{inviteMsg}</span>
+              )}
+            </div>
           </form>
         )}
         <button className="btn btn-secondary mt-2" onClick={onClose}>Cerrar</button>

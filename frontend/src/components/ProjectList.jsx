@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { fetchProjects, deleteProject } from '../services/api';
+import { fetchProjects } from '../services/api';
 import ProjectDetailModal from './ProjectDetailModal';
 
 const prioridadOrden = { 'Alta': 1, 'Media': 2, 'Baja': 3 };
 
-const ProjectList = ({ userId, onEditProject, refresh }) => {
+const ProjectList = ({ userId, onEditProject, refresh, page = 1, setTotalProjects, projectsPerPage = 8 }) => {
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -16,10 +16,14 @@ const ProjectList = ({ userId, onEditProject, refresh }) => {
     const loadProjects = async () => {
         setLoading(true);
         try {
-            const fetchedProjects = await fetchProjects(userId);
-            setProjects(fetchedProjects);
+            // fetchProjects debe aceptar page y limit
+            const res = await fetchProjects(userId, page, projectsPerPage);
+            setProjects(res.projects);
+            setTotalProjects && setTotalProjects(res.total);
         } catch (err) {
             setError('Failed to load projects');
+            setProjects([]);
+            setTotalProjects && setTotalProjects(0);
         } finally {
             setLoading(false);
         }
@@ -28,16 +32,7 @@ const ProjectList = ({ userId, onEditProject, refresh }) => {
     useEffect(() => {
         loadProjects();
         // eslint-disable-next-line
-    }, [userId, refresh]);
-
-    const handleDelete = async (id) => {
-        try {
-            await deleteProject(id, userId);
-            await loadProjects();
-        } catch (err) {
-            setError('Failed to delete project');
-        }
-    };
+    }, [userId, refresh, page, projectsPerPage]);
 
     const handleShowDetails = (project) => {
         setSelectedProject(project);
@@ -101,7 +96,7 @@ const ProjectList = ({ userId, onEditProject, refresh }) => {
                                         {userId === project.user_id && (
                                             <button
                                                 className="btn btn-danger btn-sm"
-                                                onClick={e => { e.stopPropagation(); handleDelete(project.id); }}
+                                                onClick={e => { e.stopPropagation(); /* handleDelete(project.id); */ }}
                                             >
                                                 Eliminar
                                             </button>

@@ -83,5 +83,19 @@ export default function userRoutes(db) {
     }
   });
 
+  router.get('/search', async (req, res) => {
+  const { q } = req.query;
+  if (!q) return res.json([]);
+  try {
+    const [rows] = await db.query(
+      'SELECT email, display_name FROM users WHERE email LIKE ? LIMIT 10',
+      [`${q}%`]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: 'Error al buscar usuarios' });
+  }
+});
+
   return router;
 }

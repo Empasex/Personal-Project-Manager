@@ -126,18 +126,7 @@ const ProjectForm = ({ userId }) => {
             ))}
           </select>
         </div>
-        <div className="col-md-6">
-          <label className="form-label">Responsable</label>
-          <input
-            type="text"
-            name="responsable"
-            className="form-control"
-            value={form.responsable}
-            onChange={handleChange}
-            placeholder="Nombre o email del responsable"
-            required
-          />
-        </div>
+        
         <div className="col-12">
           <button type="submit" className="btn btn-primary">
             {id ? "Actualizar" : "Crear"}

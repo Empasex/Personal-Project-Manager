@@ -8,11 +8,12 @@ const noCacheHeaders = {
   'Expires': '0'
 };
 
-export const fetchProjects = async (userId) => {
-    const response = await axios.get(`${API_URL}?userId=${userId}`);
+export const fetchProjects = async (userId, page = 1, limit = 8) => {
+    const response = await axios.get(
+        `${API_URL}?userId=${userId}&page=${page}&limit=${limit}`
+    );
     return response.data;
 };
-
 export const createProject = async (project) => {
     const response = await axios.post(API_URL, project);
     return response.data;

@@ -1,3 +1,5 @@
+import nodemailer from "nodemailer";
+
 class ProjectController {
     constructor(projectService) {
         this.projectService = projectService;
@@ -13,17 +15,39 @@ class ProjectController {
         }
     }
 
-    async getProjects(req, res) {
-        try {
-            // Puedes obtener el userId de req.user si usas autenticación
-            const userId = req.query.userId || 1; // ejemplo
-            const [projects] = await this.projectService.getProjects(userId);
-            res.status(200).json(projects);
-        } catch (error) {
-            res.status(500).json({ message: error.message });
-        }
-    }
+       async getProjects(req, res) {
+    try {
+        const userId = Number(req.query.userId) || 1;
+        const page = Number(req.query.page) || 1;
+        const limit = Number(req.query.limit) || 8;
+        const offset = (page - 1) * limit;
 
+        // Total de proyectos donde el usuario es miembro
+        const [countRows] = await this.projectService.projectModel.db.execute(
+            `SELECT COUNT(*) as total
+            FROM projects p
+            JOIN project_users pu ON pu.project_id = p.id
+            WHERE pu.user_id = ?`, [userId]
+        );
+        const total = countRows[0].total;
+
+        // Aquí agregas el ORDER BY
+        const [projects] = await this.projectService.projectModel.db.execute(
+            `SELECT p.*, u.display_name
+            FROM projects p
+            JOIN users u ON p.user_id = u.id
+            JOIN project_users pu ON pu.project_id = p.id
+            WHERE pu.user_id = ?
+            ORDER BY p.id DESC
+            LIMIT ${limit} OFFSET ${offset}`, [userId]
+        );
+
+        res.status(200).json({ projects, total });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: error.message });
+    }
+}
     async updateProject(req, res) {
         try {
             const projectId = req.params.id;
@@ -38,12 +62,10 @@ class ProjectController {
     async deleteProject(req, res) {
         try {
             const projectId = req.params.id;
-            // Solo el líder puede eliminar
             const [rows] = await this.projectService.projectModel.db.execute(
                 'SELECT user_id FROM projects WHERE id = ?', [projectId]
             );
-            // Aquí debes obtener el userId autenticado, por ejemplo de req.user.id
-            const userId = req.query.userId || 1; // <-- ajusta según tu auth
+            const userId = req.query.userId || 1;
             if (!rows.length || rows[0].user_id != userId) {
                 return res.status(403).json({ message: "Solo el líder puede eliminar el proyecto." });
             }
@@ -58,15 +80,13 @@ class ProjectController {
         try {
             const projectId = req.params.id;
             const { email } = req.body;
-            // Solo el líder puede invitar
             const [rows] = await this.projectService.projectModel.db.execute(
-                'SELECT user_id FROM projects WHERE id = ?', [projectId]
+                'SELECT user_id, name FROM projects WHERE id = ?', [projectId]
             );
-            const userId = req.query.userId || 1; // <-- ajusta según tu auth
+            const userId = req.query.userId || 1;
             if (!rows.length || rows[0].user_id != userId) {
                 return res.status(403).json({ message: "Solo el líder puede invitar usuarios." });
             }
-            // Busca el user_id por email
             const [userRows] = await this.projectService.projectModel.db.execute(
                 'SELECT id FROM users WHERE email = ?', [email]
             );
@@ -75,6 +95,30 @@ class ProjectController {
             }
             const invitedUserId = userRows[0].id;
             await this.projectService.projectModel.addUserToProject(projectId, invitedUserId);
+
+            // --- ENVÍO DE CORREO ---
+            const transporter = nodemailer.createTransport({
+                service: 'gmail',
+                auth: {
+                    user: 'empanaditalol@gmail.com',
+                    pass: 'uqak aubt pnop unyt'
+                }
+            });
+
+            const mailOptions = {
+                from: 'empanaditalol@gmail.com',
+                to: email,
+                subject: 'Has sido invitado a un proyecto',
+                text: `Hola, has sido invitado al proyecto "${rows[0].name}".\n\nIngresa a la plataforma para ver los detalles:\nhttps://d3ejww12j2glsc.cloudfront.net/`
+            };
+
+            try {
+                await transporter.sendMail(mailOptions);
+            } catch (err) {
+                console.error("Error enviando correo:", err);
+            }
+            // --- FIN ENVÍO DE CORREO ---
+
             res.status(200).json({ success: true });
         } catch (error) {
             res.status(500).json({ message: error.message });
@@ -85,11 +129,52 @@ class ProjectController {
         try {
             const projectId = req.params.id;
             const [rows] = await this.projectService.projectModel.db.execute(
-                `SELECT u.display_name, u.email FROM users u
-                 JOIN project_users pu ON pu.user_id = u.id
-                 WHERE pu.project_id = ?`, [projectId]
+                `SELECT u.display_name, u.email, u.id as user_id
+                FROM users u
+                JOIN project_users pu ON pu.user_id = u.id
+                WHERE pu.project_id = ?`, [projectId]
             );
             res.json(rows);
+        } catch (error) {
+            res.status(500).json({ message: error.message });
+        }
+    }
+
+    // NUEVO: Cambiar responsable del proyecto
+    async updateResponsable(req, res) {
+        try {
+            const projectId = req.params.id;
+            const { responsable } = req.body;
+            const userId = req.query.userId || 1;
+
+            // Solo el líder puede cambiar el responsable
+            const [rows] = await this.projectService.projectModel.db.execute(
+                'SELECT user_id FROM projects WHERE id = ?', [projectId]
+            );
+            if (!rows.length || rows[0].user_id != userId) {
+                return res.status(403).json({ message: "Solo el líder puede cambiar el responsable." });
+            }
+
+            await this.projectService.projectModel.db.execute(
+                'UPDATE projects SET responsable = ? WHERE id = ?', [responsable, projectId]
+            );
+
+            res.json({ success: true, responsable });
+        } catch (error) {
+            res.status(500).json({ message: "Error al actualizar responsable." });
+        }
+    }
+
+    async getProjectById(req, res) {
+        try {
+            const projectId = req.params.id;
+            const [rows] = await this.projectService.projectModel.db.execute(
+                'SELECT * FROM projects WHERE id = ?', [projectId]
+            );
+            if (!rows.length) {
+                return res.status(404).json({ message: "Proyecto no encontrado" });
+            }
+            res.json(rows[0]);
         } catch (error) {
             res.status(500).json({ message: error.message });
         }
